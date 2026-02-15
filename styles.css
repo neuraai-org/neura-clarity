@@ -200,6 +200,14 @@ h2 {
   font-weight: 700;
 }
 
+.philosophy p {
+  font-style: italic;
+  font-size: 1.1rem;
+  max-width: 60ch;
+  margin: 0 auto;
+  text-align: center;
+}
+
 .steps,
 .grid,
 .faq,
