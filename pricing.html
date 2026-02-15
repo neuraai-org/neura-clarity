@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Pricing | Weekly Clarity</title>
+    <meta
+      name="description"
+      content="Simple pricing for people managers: Solo Manager and Manager Pro."
+    />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;700;800&family=IBM+Plex+Mono:wght@400;500&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="./styles.css" />
+    <script src="./script.js" defer></script>
+  </head>
+  <body>
+    <div class="bg-shape bg-shape-1"></div>
+    <div class="bg-shape bg-shape-2"></div>
+    <main class="container">
+      <header class="hero pricing-hero">
+        <p class="eyebrow">Manager seat pricing</p>
+        <h1>Choose the manager workflow depth you need.</h1>
+        <p class="lead">Both plans include Slack delivery and weekly clarity.</p>
+      </header>
+
+      <section class="section pricing-grid">
+        <article class="card plan">
+          <p class="plan-name">Solo Manager</p>
+          <p class="plan-fit">Best for: individual managers who want fast weekly structure.</p>
+          <p class="price">$19<span>/mo</span></p>
+          <ul>
+            <li>Weekly Clarity (Slack + email)</li>
+            <li>1:1 + stakeholder meeting prep</li>
+            <li>Action extraction with receipts</li>
+            <li>Commitment confirmation</li>
+            <li>Retention controls (30/90/365)</li>
+          </ul>
+          <a
+            class="btn btn-primary"
+            href="./index.html#connect"
+            data-track="pricing_solo_click"
+            >Start Solo</a
+          >
+        </article>
+
+        <article class="card plan plan-highlight">
+          <p class="plan-name">Manager Pro</p>
+          <p class="plan-fit">
+            Best for: managers with complex schedules and custom prep workflows.
+          </p>
+          <p class="price">$29<span>/mo</span></p>
+          <p class="plan-subhead">Everything in Solo, plus:</p>
+          <ul>
+            <li>Custom Weekly Clarity template (sections + tone)</li>
+            <li>More “Prep me” rules + meeting-type presets</li>
+            <li>Priority coaching prompts (performance-focused)</li>
+            <li>Multiple calendars (work + personal optional)</li>
+          </ul>
+          <a
+            class="btn btn-primary"
+            href="./index.html#connect"
+            data-track="pricing_pro_click"
+            >Start Pro</a
+          >
+        </article>
+      </section>
+
+      <section class="section">
+        <h2>Quick comparison</h2>
+        <div class="comparison" role="table" aria-label="Plan comparison">
+          <div class="comparison-row comparison-head" role="row">
+            <p role="columnheader">Feature</p>
+            <p role="columnheader">Solo</p>
+            <p role="columnheader">Pro</p>
+          </div>
+          <div class="comparison-row" role="row">
+            <p role="cell">Custom Weekly Clarity template</p>
+            <p role="cell">-</p>
+            <p role="cell">Included</p>
+          </div>
+          <div class="comparison-row" role="row">
+            <p role="cell">Prep rules + meeting presets</p>
+            <p role="cell">Basic</p>
+            <p role="cell">Advanced</p>
+          </div>
+          <div class="comparison-row" role="row">
+            <p role="cell">Priority coaching prompts</p>
+            <p role="cell">-</p>
+            <p role="cell">Included</p>
+          </div>
+          <div class="comparison-row" role="row">
+            <p role="cell">Multiple calendars</p>
+            <p role="cell">-</p>
+            <p role="cell">Included</p>
+          </div>
+        </div>
+      </section>
+
+      <section class="section single-plan-note">
+        <h2>Want one plan at launch?</h2>
+        <p>
+          You can keep it simple with a single <strong>$24/mo</strong> plan
+          while validating onboarding and activation. Add the two-tier split
+          later for price discrimination.
+        </p>
+      </section>
+
+      <footer class="footer">
+        <a class="btn btn-secondary" href="./index.html">Back to Landing Page</a>
+      </footer>
+    </main>
+  </body>
+</html>
