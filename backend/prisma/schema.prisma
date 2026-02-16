@@ -1,0 +1,320 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum CalendarProvider {
+  google
+  microsoft
+}
+
+enum MeetingClassification {
+  unknown
+  one_on_one
+  stakeholder_candidate
+  stakeholder_confirmed
+}
+
+enum PrepType {
+  one_on_one
+  stakeholder
+}
+
+enum NoteSource {
+  slack_dm
+  slack_thread
+  web
+}
+
+enum SuggestionStatus {
+  pending
+  confirmed
+  snoozed
+  dismissed
+  disabled
+}
+
+enum LLMOutputType {
+  prep
+  weekly
+}
+
+enum SourceType {
+  meeting_description
+  note
+  calendar_metadata
+}
+
+enum ActionStatus {
+  open
+  done
+  snoozed
+}
+
+enum CommitmentStatus {
+  suggested
+  confirmed
+}
+
+enum DeliveryChannel {
+  slack
+  email
+}
+
+enum DeliveryType {
+  prep
+  weekly
+  suggestion
+  reminder
+}
+
+enum DeliveryStatus {
+  queued
+  sent
+  failed
+  retried
+}
+
+enum EventName {
+  calendar_connected
+  slack_connected
+  prep_sent
+  prep_opened
+  note_created
+  weekly_generated
+  weekly_opened
+  meeting_suggestion_sent
+  meeting_confirmed
+  action_created
+  action_completed
+}
+
+model Workspace {
+  id                     String               @id @default(uuid()) @db.Uuid
+  name                   String
+  slack_team_id          String               @unique
+  data_training_disabled Boolean              @default(true)
+  created_at             DateTime             @default(now())
+  updated_at             DateTime             @updatedAt
+  users                  User[]
+  slack_connections      SlackConnection[]
+}
+
+model User {
+  id                     String               @id @default(uuid()) @db.Uuid
+  workspace_id           String               @db.Uuid
+  email                  String
+  timezone               String               @default("Asia/Bangkok")
+  tone                   String               @default("neutral")
+  weekly_send_time_local String               @default("19:00")
+  retention_days         Int                  @default(90)
+  suggestions_enabled    Boolean              @default(true)
+  activated_at           DateTime?
+  created_at             DateTime             @default(now())
+  updated_at             DateTime             @updatedAt
+  workspace              Workspace            @relation(fields: [workspace_id], references: [id], onDelete: Cascade)
+  calendar_connections   CalendarConnection[]
+  meetings               MeetingEvent[]
+  prep_configs           PrepConfig[]
+  notes                  Note[]
+  suggestions            Suggestion[]
+  llm_outputs            LLMOutput[]
+  source_references      SourceReference[]
+  action_items           ActionItem[]
+  commitment_candidates  CommitmentCandidate[]
+  delivery_logs          DeliveryLog[]
+  analytics_events       AnalyticsEvent[]
+
+  @@unique([workspace_id, email])
+}
+
+model CalendarConnection {
+  id                     String           @id @default(uuid()) @db.Uuid
+  workspace_id           String           @db.Uuid
+  user_id                String           @db.Uuid
+  provider               CalendarProvider
+  provider_account_id    String
+  scopes                 String[]
+  access_token_encrypted String
+  refresh_token_encrypted String
+  token_expires_at       DateTime
+  sync_cursor            String?
+  last_sync_at           DateTime?
+  created_at             DateTime         @default(now())
+  updated_at             DateTime         @updatedAt
+  user                   User             @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@index([workspace_id])
+}
+
+model SlackConnection {
+  id                   String    @id @default(uuid()) @db.Uuid
+  workspace_id         String    @db.Uuid
+  team_id              String
+  bot_token_encrypted  String
+  bot_user_id          String
+  installer_user_id    String    @db.Uuid
+  created_at           DateTime  @default(now())
+  updated_at           DateTime  @updatedAt
+  workspace            Workspace @relation(fields: [workspace_id], references: [id], onDelete: Cascade)
+
+  @@index([team_id])
+}
+
+model MeetingEvent {
+  id                String                @id @default(uuid()) @db.Uuid
+  workspace_id      String                @db.Uuid
+  user_id           String                @db.Uuid
+  provider          CalendarProvider
+  provider_event_id String
+  recurrence_key    String
+  title             String
+  description       String?
+  start_at          DateTime
+  end_at            DateTime
+  attendees         Json
+  is_recurring      Boolean               @default(false)
+  classification    MeetingClassification @default(unknown)
+  created_at        DateTime              @default(now())
+  updated_at        DateTime              @updatedAt
+  user              User                  @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  notes             Note[]
+
+  @@unique([provider, provider_event_id, user_id])
+  @@index([workspace_id, user_id, recurrence_key])
+}
+
+model PrepConfig {
+  id                   String   @id @default(uuid()) @db.Uuid
+  workspace_id         String   @db.Uuid
+  user_id              String   @db.Uuid
+  meeting_recurrence_key String
+  type                 PrepType
+  enabled              Boolean  @default(false)
+  created_at           DateTime @default(now())
+  updated_at           DateTime @updatedAt
+  user                 User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@unique([user_id, meeting_recurrence_key])
+  @@index([workspace_id])
+}
+
+model Note {
+  id              String       @id @default(uuid()) @db.Uuid
+  workspace_id    String       @db.Uuid
+  user_id         String       @db.Uuid
+  source          NoteSource
+  text            String
+  meeting_event_id String?     @db.Uuid
+  thread_ts       String?
+  created_at      DateTime     @default(now())
+  user            User         @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  meeting_event   MeetingEvent? @relation(fields: [meeting_event_id], references: [id], onDelete: SetNull)
+}
+
+model Suggestion {
+  id                    String           @id @default(uuid()) @db.Uuid
+  workspace_id          String           @db.Uuid
+  user_id               String           @db.Uuid
+  meeting_recurrence_key String
+  stakeholder_label     String
+  score                 Decimal          @db.Decimal(5, 2)
+  status                SuggestionStatus @default(pending)
+  snoozed_until         DateTime?
+  sent_at               DateTime?
+  created_at            DateTime         @default(now())
+  updated_at            DateTime         @updatedAt
+  user                  User             @relation(fields: [user_id], references: [id], onDelete: Cascade)
+}
+
+model LLMOutput {
+  id               String        @id @default(uuid()) @db.Uuid
+  workspace_id     String        @db.Uuid
+  user_id          String        @db.Uuid
+  type             LLMOutputType
+  meeting_event_id String?       @db.Uuid
+  payload_json     Json
+  sources_used     Json
+  generated_at     DateTime      @default(now())
+  user             User          @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  action_items     ActionItem[]
+}
+
+model SourceReference {
+  id               String      @id @default(uuid()) @db.Uuid
+  workspace_id     String      @db.Uuid
+  user_id          String      @db.Uuid
+  source_type      SourceType
+  source_id        String
+  snippet          String
+  source_timestamp DateTime
+  meeting_event_id String?     @db.Uuid
+  created_at       DateTime    @default(now())
+  user             User        @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  action_items     ActionItem[]
+  commitments      CommitmentCandidate[]
+}
+
+model ActionItem {
+  id                     String          @id @default(uuid()) @db.Uuid
+  workspace_id           String          @db.Uuid
+  user_id                String          @db.Uuid
+  text                   String
+  owner                  String          @default("self")
+  status                 ActionStatus    @default(open)
+  due_suggested_at       DateTime?
+  snoozed_until          DateTime?
+  source_reference_id    String          @db.Uuid
+  created_from_output_id String?         @db.Uuid
+  created_at             DateTime        @default(now())
+  updated_at             DateTime        @updatedAt
+  user                   User            @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  source_reference       SourceReference @relation(fields: [source_reference_id], references: [id], onDelete: Cascade)
+  created_from_output    LLMOutput?      @relation(fields: [created_from_output_id], references: [id], onDelete: SetNull)
+}
+
+model CommitmentCandidate {
+  id                  String           @id @default(uuid()) @db.Uuid
+  workspace_id        String           @db.Uuid
+  user_id             String           @db.Uuid
+  text                String
+  source_reference_id String           @db.Uuid
+  status              CommitmentStatus @default(suggested)
+  confirmed_at        DateTime?
+  created_at          DateTime         @default(now())
+  updated_at          DateTime         @updatedAt
+  user                User             @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  source_reference    SourceReference  @relation(fields: [source_reference_id], references: [id], onDelete: Cascade)
+}
+
+model DeliveryLog {
+  id              String         @id @default(uuid()) @db.Uuid
+  workspace_id    String         @db.Uuid
+  user_id         String         @db.Uuid
+  channel         DeliveryChannel
+  delivery_type   DeliveryType
+  idempotency_key String
+  status          DeliveryStatus @default(queued)
+  attempt_count   Int            @default(0)
+  last_error      String?
+  sent_at         DateTime?
+  created_at      DateTime       @default(now())
+  updated_at      DateTime       @updatedAt
+  user            User           @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@unique([workspace_id, idempotency_key])
+}
+
+model AnalyticsEvent {
+  id               String    @id @default(uuid()) @db.Uuid
+  workspace_id     String    @db.Uuid
+  user_id          String    @db.Uuid
+  event_name       EventName
+  event_properties Json
+  occurred_at      DateTime  @default(now())
+  user             User      @relation(fields: [user_id], references: [id], onDelete: Cascade)
+}

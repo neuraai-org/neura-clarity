@@ -1,0 +1,553 @@
+openapi: 3.0.3
+info:
+  title: Weekly Clarity MVP API
+  version: 0.1.0
+  description: >-
+    API contracts for onboarding, integrations, prep, weekly clarity, suggestions,
+    actions, and privacy controls.
+servers:
+  - url: https://api.neura-clarity.example
+
+tags:
+  - name: Auth
+  - name: Integrations
+  - name: Meetings
+  - name: Notes
+  - name: Prep
+  - name: Weekly
+  - name: Suggestions
+  - name: Actions
+  - name: Privacy
+  - name: Analytics
+
+paths:
+  /v1/auth/signup:
+    post:
+      tags: [Auth]
+      summary: Create account via email/password
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password]
+              properties:
+                email: { type: string, format: email }
+                password: { type: string, minLength: 8 }
+      responses:
+        '201':
+          description: Created
+
+  /v1/auth/magic-link:
+    post:
+      tags: [Auth]
+      summary: Request magic link login
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email]
+              properties:
+                email: { type: string, format: email }
+      responses:
+        '202': { description: Accepted }
+
+  /v1/integrations/calendar/google/connect:
+    post:
+      tags: [Integrations]
+      summary: Connect Google Calendar
+      responses:
+        '200':
+          description: OAuth URL generated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  auth_url: { type: string, format: uri }
+
+  /v1/integrations/calendar/microsoft/connect:
+    post:
+      tags: [Integrations]
+      summary: Connect Microsoft Calendar
+      responses:
+        '200':
+          description: OAuth URL generated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  auth_url: { type: string, format: uri }
+
+  /v1/integrations/slack/connect:
+    post:
+      tags: [Integrations]
+      summary: Connect Slack workspace
+      responses:
+        '200':
+          description: OAuth URL generated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  auth_url: { type: string, format: uri }
+
+  /v1/settings:
+    get:
+      tags: [Auth]
+      summary: Get user settings
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserSettings'
+    patch:
+      tags: [Auth]
+      summary: Update user settings
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserSettingsPatch'
+      responses:
+        '200':
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserSettings'
+
+  /v1/meetings:
+    get:
+      tags: [Meetings]
+      summary: List recent synced meetings and classification
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/MeetingEvent'
+
+  /v1/meetings/{recurrenceKey}/prep-config:
+    put:
+      tags: [Meetings]
+      summary: Enable or disable prep for meeting recurrence key
+      parameters:
+        - in: path
+          name: recurrenceKey
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [enabled, type]
+              properties:
+                enabled: { type: boolean }
+                type:
+                  type: string
+                  enum: [one_on_one, stakeholder]
+      responses:
+        '200': { description: Updated }
+
+  /v1/notes:
+    post:
+      tags: [Notes]
+      summary: Append a note (Slack/web)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [source, text]
+              properties:
+                source:
+                  type: string
+                  enum: [slack_dm, slack_thread, web]
+                text: { type: string, minLength: 1 }
+                meeting_event_id: { type: string, format: uuid, nullable: true }
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Note'
+
+  /v1/prep/next:
+    post:
+      tags: [Prep]
+      summary: Generate prep payload for next prep-enabled meeting
+      responses:
+        '200':
+          description: Prep generated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PrepOutput'
+
+  /v1/weekly/generate:
+    post:
+      tags: [Weekly]
+      summary: Generate weekly clarity now
+      responses:
+        '200':
+          description: Weekly output generated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WeeklyOutput'
+
+  /v1/weekly/history:
+    get:
+      tags: [Weekly]
+      summary: List weekly output history
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/WeeklyOutput'
+
+  /v1/suggestions:
+    get:
+      tags: [Suggestions]
+      summary: List stakeholder suggestions
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Suggestion'
+
+  /v1/suggestions/{id}/respond:
+    post:
+      tags: [Suggestions]
+      summary: Respond to stakeholder suggestion
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [action]
+              properties:
+                action:
+                  type: string
+                  enum: [confirm, snooze_30d, stop_suggesting]
+      responses:
+        '200': { description: Updated }
+
+  /v1/actions:
+    get:
+      tags: [Actions]
+      summary: List action items
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ActionItem'
+
+  /v1/actions/{id}/status:
+    patch:
+      tags: [Actions]
+      summary: Update action item status
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [status]
+              properties:
+                status:
+                  type: string
+                  enum: [open, done, snoozed]
+                snoozed_until:
+                  type: string
+                  format: date-time
+                  nullable: true
+      responses:
+        '200': { description: Updated }
+
+  /v1/actions/followups/draft:
+    post:
+      tags: [Actions]
+      summary: Create follow-up draft for an action item
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [action_id, audience]
+              properties:
+                action_id: { type: string, format: uuid }
+                audience: { type: string }
+      responses:
+        '200':
+          description: Draft created
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [action_id, audience, draft]
+                properties:
+                  action_id: { type: string, format: uuid }
+                  audience: { type: string }
+                  draft: { type: string }
+
+  /v1/commitments/{id}/confirm:
+    post:
+      tags: [Actions]
+      summary: Confirm commitment candidate
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200': { description: Confirmed }
+
+  /v1/privacy/export:
+    post:
+      tags: [Privacy]
+      summary: Request account data export
+      responses:
+        '202': { description: Export requested }
+
+  /v1/privacy/delete-account:
+    post:
+      tags: [Privacy]
+      summary: Delete account and user data
+      responses:
+        '202': { description: Deletion initiated }
+
+  /v1/analytics/events:
+    post:
+      tags: [Analytics]
+      summary: Ingest analytics event
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AnalyticsEvent'
+      responses:
+        '202': { description: Accepted }
+
+components:
+  schemas:
+    UserSettings:
+      type: object
+      properties:
+        timezone: { type: string }
+        tone: { type: string, enum: [concise, neutral, warm] }
+        weekly_send_time_local: { type: string, example: '19:00' }
+        retention_days: { type: integer, enum: [30, 90, 365] }
+        suggestions_enabled: { type: boolean }
+
+    UserSettingsPatch:
+      type: object
+      properties:
+        timezone: { type: string }
+        tone: { type: string, enum: [concise, neutral, warm] }
+        weekly_send_time_local: { type: string }
+        retention_days: { type: integer, enum: [30, 90, 365] }
+        suggestions_enabled: { type: boolean }
+
+    MeetingEvent:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        recurrence_key: { type: string }
+        title: { type: string }
+        start_at: { type: string, format: date-time }
+        end_at: { type: string, format: date-time }
+        classification:
+          type: string
+          enum: [unknown, one_on_one, stakeholder_candidate, stakeholder_confirmed]
+
+    Note:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        source: { type: string, enum: [slack_dm, slack_thread, web] }
+        text: { type: string }
+        meeting_event_id: { type: string, format: uuid, nullable: true }
+        created_at: { type: string, format: date-time }
+
+    SourceReceipt:
+      type: object
+      required: [snippet, timestamp, source_label, source_id]
+      properties:
+        snippet: { type: string }
+        timestamp: { type: string, format: date-time }
+        source_label: { type: string }
+        source_id: { type: string }
+
+    PrepOutput:
+      type: object
+      required: [meeting_id, context_bullets, open_loops, suggested_agenda, questions, sources_used]
+      properties:
+        meeting_id: { type: string, format: uuid }
+        context_bullets:
+          type: array
+          maxItems: 4
+          items: { type: string }
+        open_loops:
+          type: array
+          maxItems: 5
+          items:
+            type: object
+            required: [text, receipt]
+            properties:
+              text: { type: string }
+              receipt: { $ref: '#/components/schemas/SourceReceipt' }
+        suggested_agenda:
+          type: array
+          maxItems: 5
+          items: { type: string }
+        questions:
+          type: array
+          maxItems: 3
+          items: { type: string }
+        sources_used:
+          type: array
+          items: { $ref: '#/components/schemas/SourceReceipt' }
+
+    WeeklyOutput:
+      type: object
+      required:
+        [top_priorities, wins, risks_with_next_step, people_attention, next_actions, sources_used]
+      properties:
+        top_priorities:
+          type: array
+          minItems: 1
+          maxItems: 3
+          items: { type: string }
+        wins:
+          type: array
+          items: { type: string }
+        risks_with_next_step:
+          type: array
+          items:
+            type: object
+            properties:
+              risk: { type: string }
+              next_step: { type: string }
+              receipt: { $ref: '#/components/schemas/SourceReceipt' }
+        people_attention:
+          type: array
+          items:
+            type: object
+            properties:
+              person: { type: string }
+              signal: { type: string }
+              receipt: { $ref: '#/components/schemas/SourceReceipt' }
+        next_actions:
+          type: array
+          maxItems: 10
+          items:
+            $ref: '#/components/schemas/ActionItem'
+        manager_update_draft: { type: string }
+        follow_up_drafts:
+          type: array
+          items: { type: string }
+        sources_used:
+          type: array
+          items: { $ref: '#/components/schemas/SourceReceipt' }
+
+    Suggestion:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        meeting_recurrence_key: { type: string }
+        stakeholder_label: { type: string }
+        score: { type: number }
+        status:
+          type: string
+          enum: [pending, confirmed, snoozed, dismissed, disabled]
+        snoozed_until: { type: string, format: date-time, nullable: true }
+
+    ActionItem:
+      type: object
+      required: [id, text, status]
+      properties:
+        id: { type: string, format: uuid }
+        text: { type: string }
+        owner: { type: string }
+        status: { type: string, enum: [open, done, snoozed] }
+        due_suggested_at: { type: string, format: date-time, nullable: true }
+        source_receipt: { $ref: '#/components/schemas/SourceReceipt' }
+
+    AnalyticsEvent:
+      type: object
+      required: [event_name, occurred_at]
+      properties:
+        event_name:
+          type: string
+          enum:
+            - calendar_connected
+            - slack_connected
+            - prep_sent
+            - prep_opened
+            - note_created
+            - weekly_generated
+            - weekly_opened
+            - meeting_suggestion_sent
+            - meeting_confirmed
+            - action_created
+            - action_completed
+        event_properties:
+          type: object
+          additionalProperties: true
+        occurred_at:
+          type: string
+          format: date-time
